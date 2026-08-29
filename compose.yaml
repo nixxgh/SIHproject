@@ -1,11 +1,31 @@
+
 services:
-  web:
-    build: .
-    # Maps port 3000 on your host machine to port 3000 in the container
+  # Python SfM & Processing Engine
+  backend:
+    build:
+      context: ./docker/backend
+      dockerfile: Dockerfile
+    container_name: ntro_backend
     ports:
-      - "3000:3000"
-    # Pass environment variables directly to the container
+      - "8000:8000"
+    volumes:
+      - ./docker/backend/src:/app/src
+      - ./data:/app/data
     environment:
-      - NODE_ENV=development
-    # Optional: Automatically restart if it crashes
-    restart: unless-stopped
+      - ENV=development
+
+  # Node.js / Astro Dashboard
+  frontend:
+    build:
+      context: ./docker/frontend
+      dockerfile: Dockerfile
+    container_name: ntro_frontend
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./docker/frontend/src:/app/src
+      - ./docker/frontend/public:/app/public
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8000

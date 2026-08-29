@@ -1,16 +1,38 @@
-# Dependencies
-node_modules/
+# ========================
+# Node.js & Astro (Frontend)
+# ========================
+docker/frontend/node_modules/
+docker/frontend/dist/
+docker/frontend/.astro/
+npm-debug.log
+
+# ========================
+# Python (Backend)
+# ========================
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
 venv/
+.venv/
+env/
+pip-log.txt
 
-# Build outputs
-dist/
-build/
+# ========================
+# Project Data & Outputs
+# ========================
+# NEVER commit raw video files or COLMAP 3D generation outputs!
+data/
+*.mp4
+*.mov
+*.ply
+*.obj
+*.bin
 
-# Environment variables / Secrets
+# ========================
+# OS & Environment
+# ========================
 .env
-.env.local
-
-# OS generated files
 .DS_Store
 Thumbs.db
+.direnv/

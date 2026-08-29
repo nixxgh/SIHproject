@@ -1,18 +1,29 @@
-# Git files
+# Git
 .git
 .gitignore
 
-# Docker config (the container doesn't need its own instructions)
-Dockerfile
+# Docker configuration (doesn't need to be inside the container)
 compose.yaml
 .dockerignore
+README.md
 
-# Dependencies and local builds (let Docker build its own)
-node_modules
-dist
-build
-__pycache__
-venv
+# Node.js
+# (We want Docker to run 'npm install' itself, not copy your local modules)
+**/node_modules/
+**/dist/
+**/.astro/
 
-# Secrets
-.env
+# Python
+# (Prevent copying locally compiled bytecode)
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/venv/
+**/.venv/
+
+# Local Environment Variables
+**/.env
+
+# Massive Data Folders
+# (These are mounted via volumes in compose.yaml, they shouldn't be baked into the image!)
+data/
