@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    # Maps port 3000 on your host machine to port 3000 in the container
+    ports:
+      - "3000:3000"
+    # Pass environment variables directly to the container
+    environment:
+      - NODE_ENV=development
+    # Optional: Automatically restart if it crashes
+    restart: unless-stopped

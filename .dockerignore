@@ -1,0 +1,18 @@
+# Git files
+.git
+.gitignore
+
+# Docker config (the container doesn't need its own instructions)
+Dockerfile
+compose.yaml
+.dockerignore
+
+# Dependencies and local builds (let Docker build its own)
+node_modules
+dist
+build
+__pycache__
+venv
+
+# Secrets
+.env
