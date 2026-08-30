@@ -1,10 +1,58 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 
-app = FastAPI(title="NTRO 3D Reconstruction API")
+from frames import extract_frames
+from selection import select_frames
+from reconstruction import run_colmap, run_dense_reconstruction
 
-@app.get("/")
-def health_check():
+app = FastAPI(title="Edge Station 3D Pipeline")
+
+# Docker path configurations
+INPUT_DIR = "/app/data/inputs"
+OUTPUT_BASE = "/app/data/outputs"
+ALL_FRAMES_DIR = f"{OUTPUT_BASE}/frames/all"
+SELECTED_FRAMES_DIR = f"{OUTPUT_BASE}/frames/selected"
+RECON_DIR = f"{OUTPUT_BASE}/reconstruction"
+
+class ProcessingRequest(BaseModel):
+    video_filename: str
+    preset: str = "low"
+    max_frames: int = 150
+
+def execute_pipeline(video_path: str, preset: str, max_frames: int):
+    """The master function that runs asynchronously in the background."""
+    try:
+        print(f"[*] Starting background pipeline for {video_path}")
+        extract_frames(video_path, ALL_FRAMES_DIR, preset=preset)
+        select_frames(ALL_FRAMES_DIR, SELECTED_FRAMES_DIR, max_frames=max_frames)
+        run_colmap(SELECTED_FRAMES_DIR, RECON_DIR)
+        run_dense_reconstruction(SELECTED_FRAMES_DIR, RECON_DIR)
+        print("[+] Pipeline completed successfully.")
+    except Exception as e:
+        print(f"[!] Pipeline failed: {str(e)}")
+
+@app.post("/api/v1/process")
+async def trigger_processing(request: ProcessingRequest, background_tasks: BackgroundTasks):
+    video_path = os.path.join(INPUT_DIR, request.video_filename)
+    
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail=f"Video '{request.video_filename}' not found in {INPUT_DIR}")
+
+    # Hand the heavy lifting off to a background thread
+    background_tasks.add_task(
+        execute_pipeline, 
+        video_path, 
+        request.preset, 
+        request.max_frames
+    )
+    
     return {
-        "status": "online",
-        "message": "Backend engine is running and ready for SfM pipeline."
+        "status": "processing_started",
+        "message": f"Pipeline triggered for {request.video_filename}.",
+        "outputs_will_save_to": RECON_DIR
     }
+
+@app.get("/api/v1/health")
+async def health_check():
+    return {"status": "online", "service": "Reconstruction Engine"}
