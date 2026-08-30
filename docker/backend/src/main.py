@@ -1,10 +1,12 @@
 import os
-from fastapi import FastAPI, BackgroundTasks, HTTPException
-from pydantic import BaseModel
+import shutil
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Form
+from fastapi.responses import RedirectResponse
 
-from frames import extract_frames
-from selection import select_frames
-from reconstruction import run_colmap, run_dense_reconstruction
+# Updated module imports to match package path
+from src.frames import extract_frames
+from src.selection import select_frames
+from src.reconstruction import run_colmap, run_dense_reconstruction
 
 app = FastAPI(title="Edge Station 3D Pipeline")
 
@@ -15,10 +17,9 @@ ALL_FRAMES_DIR = f"{OUTPUT_BASE}/frames/all"
 SELECTED_FRAMES_DIR = f"{OUTPUT_BASE}/frames/selected"
 RECON_DIR = f"{OUTPUT_BASE}/reconstruction"
 
-class ProcessingRequest(BaseModel):
-    video_filename: str
-    preset: str = "low"
-    max_frames: int = 150
+# Ensure directories exist before saving uploads
+os.makedirs(INPUT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_BASE, exist_ok=True)
 
 def execute_pipeline(video_path: str, preset: str, max_frames: int):
     """The master function that runs asynchronously in the background."""
@@ -32,24 +33,39 @@ def execute_pipeline(video_path: str, preset: str, max_frames: int):
     except Exception as e:
         print(f"[!] Pipeline failed: {str(e)}")
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/docs")
+
 @app.post("/api/v1/process")
-async def trigger_processing(request: ProcessingRequest, background_tasks: BackgroundTasks):
-    video_path = os.path.join(INPUT_DIR, request.video_filename)
+async def trigger_processing(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    preset: str = Form("low"),
+    max_frames: int = Form(150),
+):
+    # Reject non-video uploads
+    if not file.filename.endswith(('.mp4', '.mov', '.mkv', '.avi')):
+        raise HTTPException(status_code=400, detail="Only video files are supported.")
+
+    video_path = os.path.join(INPUT_DIR, file.filename)
     
-    if not os.path.exists(video_path):
-        raise HTTPException(status_code=404, detail=f"Video '{request.video_filename}' not found in {INPUT_DIR}")
+    # Save the uploaded file to disk
+    with open(video_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     # Hand the heavy lifting off to a background thread
     background_tasks.add_task(
         execute_pipeline, 
         video_path, 
-        request.preset, 
-        request.max_frames
+        preset, 
+        max_frames
     )
     
     return {
         "status": "processing_started",
-        "message": f"Pipeline triggered for {request.video_filename}.",
+        "filename": file.filename,
+        "message": f"Pipeline triggered for {file.filename}.",
         "outputs_will_save_to": RECON_DIR
     }
 

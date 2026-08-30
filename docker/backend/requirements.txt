@@ -3,11 +3,10 @@ fastapi==0.110.0
 uvicorn==0.28.0
 python-multipart==0.0.9
 
-# --- Computer Vision & Array Math (From Shikhar's Pipeline) ---
-# Note: Using 'headless' version for Docker compatibility
-opencv-python-headless>=5.0.0.93
-numpy>=2.5.2
+# --- Computer Vision & Array Math ---
+opencv-python-headless==4.8.1.78
+numpy==1.26.4
 
 # --- Geospatial & Data ---
 pyproj==3.6.1
-pandas==2.2.1
+pandas==2.2.2
